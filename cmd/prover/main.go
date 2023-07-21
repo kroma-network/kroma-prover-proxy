@@ -59,6 +59,7 @@ func newServer(ctx *cli.Context) *proof.Server {
 		ec2.MustNewController(
 			ctx.String(AwsRegion.Name),
 			ctx.String(AwsProverInstanceId.Name),
+			ctx.String(AwsProverAddressType.Name),
 		),
 	)
 }

@@ -34,6 +34,12 @@ var (
 		EnvVar:   "AWS_PROVER_INSTANCE_ID",
 		Required: true,
 	}
+	AwsProverAddressType = cli.StringFlag{
+		Name:   "aws.prover-address-type",
+		Usage:  "EC instance address type (private, public)",
+		Value:  "private",
+		EnvVar: "AWS_PROVER_ADDRESS_TYPE",
+	}
 )
 
 func AllFlags() []cli.Flag {

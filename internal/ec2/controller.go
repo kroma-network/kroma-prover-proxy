@@ -3,6 +3,7 @@ package ec2
 import (
 	"fmt"
 	"log"
+	"strings"
 	"sync"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -19,13 +20,21 @@ type Controller struct {
 	mu         sync.Mutex
 }
 
-func MustNewController(region string, instanceId string) *Controller {
+func MustNewController(
+	region string,
+	instanceId string,
+	instanceAddressType string,
+) *Controller {
+	instanceAddressType = strings.ToLower(strings.TrimSpace(instanceAddressType))
+	if instanceAddressType != "private" && instanceAddressType != "public" {
+		log.Panicf("invalid instanceAddressType %v\n", instanceAddressType)
+	}
 	sess, err := session.NewSession(&aws.Config{Region: &region})
 	if err != nil {
 		log.Panicln(fmt.Errorf("failed to create ec2 controller: %w", err))
 	}
 	instance := &Controller{region: region, instanceId: instanceId, client: ec2.New(sess)}
-	if err := instance.updateState(); err != nil {
+	if err := instance.updateState(instanceAddressType); err != nil {
 		log.Panicln(fmt.Errorf("failed to update ec2 controller: %w", err))
 	}
 	return instance
@@ -33,16 +42,12 @@ func MustNewController(region string, instanceId string) *Controller {
 
 func (c *Controller) IpAddress() string { return c.ipAddress }
 
-func (c *Controller) updateState() error {
+func (c *Controller) updateState(instanceAddressType string) error {
 	instance, err := c.findInstance()
 	if err == nil {
 		c.running = aws.StringValue(instance.State.Name) == "running" || aws.StringValue(instance.State.Name) == "pending"
-		for _, networkInterface := range instance.NetworkInterfaces {
-			for _, ipAddress := range networkInterface.PrivateIpAddresses {
-				c.ipAddress = aws.StringValue(ipAddress.PrivateIpAddress) // private
-				// aws.StringValue(ipAddress.Association.PublicIp) public
-			}
-		}
+		c.ipAddress = findAddress(instance, instanceAddressType)
+
 	}
 	return err
 }
@@ -53,6 +58,29 @@ func (c *Controller) findInstance() (*ec2.Instance, error) {
 		return nil, err
 	}
 	return output.Reservations[0].Instances[0], nil
+}
+
+func findAddress(instance *ec2.Instance, instanceAddressType string) (address string) {
+	for _, networkInterface := range instance.NetworkInterfaces {
+		if networkInterface != nil {
+			for _, ipAddress := range networkInterface.PrivateIpAddresses {
+				if ipAddress != nil {
+					switch instanceAddressType {
+					case "private":
+						address = aws.StringValue(ipAddress.PrivateIpAddress)
+					case "public":
+						if ipAddress.Association != nil {
+							address = aws.StringValue(ipAddress.Association.PublicIp)
+						}
+					}
+					if len(address) != 0 {
+						return
+					}
+				}
+			}
+		}
+	}
+	return
 }
 
 func (c *Controller) StartIfNotRunning() error {
