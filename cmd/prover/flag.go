@@ -5,17 +5,17 @@ import (
 )
 
 var (
-	GRPCAddr = cli.StringFlag{
-		Name:   "grpc.addr",
-		Usage:  "GRPC server listening address",
+	JsonRpcAddr = cli.StringFlag{
+		Name:   "jsonrpc.addr",
+		Usage:  "Json Rpc server listening address",
 		Value:  "localhost",
-		EnvVar: "GRPC_ADDR",
+		EnvVar: "JSONRPC_ADDR",
 	}
-	GRPCPort = cli.IntFlag{
-		Name:   "grpc.port",
-		Usage:  "GRPC server listening port",
+	JsonRpcPort = cli.IntFlag{
+		Name:   "jsonrpc.port",
+		Usage:  "Json Rpc server listening port",
 		Value:  6000,
-		EnvVar: "GRPC_PORT",
+		EnvVar: "JSONRPC_PORT",
 	}
 	ProofBaseDir = cli.StringFlag{
 		Name:   "proof.base-dir",
@@ -44,10 +44,11 @@ var (
 
 func AllFlags() []cli.Flag {
 	return []cli.Flag{
-		GRPCAddr,
-		GRPCPort,
+		JsonRpcAddr,
+		JsonRpcPort,
 		ProofBaseDir,
 		AwsRegion,
 		AwsProverInstanceId,
+		AwsProverAddressType,
 	}
 }

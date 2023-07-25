@@ -13,6 +13,7 @@ import (
 type FileProof struct {
 	FinalPair []byte `json:"final_pair,omitempty"`
 	Proof     []byte `json:"proof,omitempty"`
+	Error     error
 }
 
 type DiskRepository struct {
@@ -83,7 +84,14 @@ func (r *DiskRepository) deleteOldProof(time time.Time) (deletedCount int) {
 	files, _ := os.ReadDir(r.baseDir)
 	for _, file := range files {
 		info, _ := file.Info()
-		if info.ModTime().Before(time) {
+		hasError := func() bool {
+			proof := r.Find(file.Name())
+			if proof == nil {
+				return false
+			}
+			return proof.Error != nil
+		}
+		if info.ModTime().Before(time) || hasError() {
 			if err := os.Remove(r.baseDir + file.Name()); err != nil {
 				log.Println(fmt.Errorf("failed to delete old proof %s: %w", file.Name(), err))
 			} else {

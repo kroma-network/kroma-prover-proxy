@@ -1,6 +1,7 @@
 package ec2
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"strings"
@@ -29,6 +30,10 @@ func MustNewController(
 	if instanceAddressType != "private" && instanceAddressType != "public" {
 		log.Panicf("invalid instanceAddressType %v\n", instanceAddressType)
 	}
+	// The session.NewSession function automatically handles AWS credentials using the default credential provider chain.
+	// This means that the AWS credentials can be obtained from multiple sources such as environment variables,
+	// shared credentials file, or IAM roles assigned to the running instance (in case of EC2).
+	// Therefore, there is no need to explicitly specify AWS credentials in this code.
 	sess, err := session.NewSession(&aws.Config{Region: &region})
 	if err != nil {
 		log.Panicln(fmt.Errorf("failed to create ec2 controller: %w", err))
@@ -47,7 +52,9 @@ func (c *Controller) updateState(instanceAddressType string) error {
 	if err == nil {
 		c.running = aws.StringValue(instance.State.Name) == "running" || aws.StringValue(instance.State.Name) == "pending"
 		c.ipAddress = findAddress(instance, instanceAddressType)
-
+		if len(c.ipAddress) == 0 {
+			return errors.New("failed to retrieve instance address")
+		}
 	}
 	return err
 }
