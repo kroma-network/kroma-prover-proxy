@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -25,6 +26,8 @@ func MustNewController(
 	region string,
 	instanceId string,
 	instanceAddressType string,
+	urlSchema string,
+	port int,
 ) *Controller {
 	instanceAddressType = strings.ToLower(strings.TrimSpace(instanceAddressType))
 	if instanceAddressType != "private" && instanceAddressType != "public" {
@@ -39,7 +42,7 @@ func MustNewController(
 		log.Panicln(fmt.Errorf("failed to create ec2 controller: %w", err))
 	}
 	instance := &Controller{region: region, instanceId: instanceId, client: ec2.New(sess)}
-	if err := instance.updateState(instanceAddressType); err != nil {
+	if err := instance.updateState(instanceAddressType, urlSchema, port); err != nil {
 		log.Panicln(fmt.Errorf("failed to update ec2 controller: %w", err))
 	}
 	return instance
@@ -47,11 +50,11 @@ func MustNewController(
 
 func (c *Controller) IpAddress() string { return c.ipAddress }
 
-func (c *Controller) updateState(instanceAddressType string) error {
+func (c *Controller) updateState(instanceAddressType string, urlSchema string, port int) error {
 	instance, err := c.findInstance()
 	if err == nil {
 		c.running = aws.StringValue(instance.State.Name) == "running" || aws.StringValue(instance.State.Name) == "pending"
-		c.ipAddress = findAddress(instance, instanceAddressType)
+		c.ipAddress = findAddress(instance, instanceAddressType, urlSchema, port)
 		if len(c.ipAddress) == 0 {
 			return errors.New("failed to retrieve instance address")
 		}
@@ -67,7 +70,7 @@ func (c *Controller) findInstance() (*ec2.Instance, error) {
 	return output.Reservations[0].Instances[0], nil
 }
 
-func findAddress(instance *ec2.Instance, instanceAddressType string) (address string) {
+func findAddress(instance *ec2.Instance, instanceAddressType string, schema string, port int) (address string) {
 	for _, networkInterface := range instance.NetworkInterfaces {
 		if networkInterface != nil {
 			for _, ipAddress := range networkInterface.PrivateIpAddresses {
@@ -81,7 +84,7 @@ func findAddress(instance *ec2.Instance, instanceAddressType string) (address st
 						}
 					}
 					if len(address) != 0 {
-						return
+						return schema + "://" + address + ":" + strconv.Itoa(port)
 					}
 				}
 			}

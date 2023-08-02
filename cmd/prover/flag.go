@@ -40,6 +40,18 @@ var (
 		Value:  "private",
 		EnvVar: "AWS_PROVER_ADDRESS_TYPE",
 	}
+	AwsProverUrlSchema = cli.StringFlag{
+		Name:   "aws.prover-url-schema",
+		Usage:  "http, https",
+		Value:  "http",
+		EnvVar: "AWS_PROVER_URL_SCHEMA",
+	}
+	AwsProverJsonRpcPort = cli.IntFlag{
+		Name:   "aws.prover-jsonrpc-port",
+		Usage:  "jsonrpc port",
+		Value:  3030,
+		EnvVar: "AWS_PROVER_JSONRPC_PORT",
+	}
 )
 
 func AllFlags() []cli.Flag {
@@ -50,5 +62,7 @@ func AllFlags() []cli.Flag {
 		AwsRegion,
 		AwsProverInstanceId,
 		AwsProverAddressType,
+		AwsProverUrlSchema,
+		AwsProverJsonRpcPort,
 	}
 }
