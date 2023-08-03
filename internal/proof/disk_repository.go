@@ -11,9 +11,10 @@ import (
 )
 
 type FileProof struct {
-	FinalPair []byte `json:"final_pair,omitempty"`
-	Proof     []byte `json:"proof,omitempty"`
-	Error     error
+	FinalPair []byte        `json:"final_pair,omitempty"`
+	Proof     []byte        `json:"proof,omitempty"`
+	Error     string        `json:"error,omitempty"`
+	RpcError  *JsonRpcError `json:"rpcError,omitempty"`
 }
 
 type DiskRepository struct {
@@ -89,7 +90,7 @@ func (r *DiskRepository) deleteOldProof(time time.Time) (deletedCount int) {
 			if proof == nil {
 				return false
 			}
-			return proof.Error != nil
+			return len(proof.Error) != 0
 		}
 		if info.ModTime().Before(time) || hasError() {
 			if err := os.Remove(r.baseDir + file.Name()); err != nil {

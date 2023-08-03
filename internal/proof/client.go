@@ -3,6 +3,7 @@ package proof
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -30,11 +31,28 @@ type request struct {
 }
 
 type response[T any] struct {
-	Jsonrpc string `json:"jsonrpc"`
-	Result  *T     `json:"result"`
-	Error   any    `json:"error"`
-	Id      string `json:"id"`
+	Jsonrpc string        `json:"jsonrpc"`
+	Result  *T            `json:"result"`
+	Error   *JsonRpcError `json:"error"`
+	Id      string        `json:"id"`
 }
+
+type JsonRpcError struct {
+	Code    int    `json:"code"`
+	Message string `json:"message"`
+	Data    any    `json:"data"`
+}
+
+func NewJsonRpcErrorFromString(err string) *JsonRpcError {
+	return &JsonRpcError{Code: -32000, Message: err}
+}
+
+func NewJsonRpcErrorFromErrorOrNil(err error) (rpcError *JsonRpcError) {
+	errors.As(err, &rpcError)
+	return
+}
+
+func (j *JsonRpcError) Error() string { return fmt.Sprintf("[%d] %s", j.Code, j.Message) }
 
 func (d dialJsonRpcProverClient) Prove(traceString string, proofType Type) (*ProveResponse, error) {
 	return send[ProveResponse](d.address, "prove", []any{traceString, proofType})
@@ -61,6 +79,9 @@ func send[T any](address string, method string, params any) (*T, error) {
 	var response response[T]
 	if err = json.Unmarshal(jsonBytes, &response); err != nil {
 		return nil, err
+	}
+	if response.Error != nil {
+		return nil, response.Error
 	}
 	return response.Result, nil
 }
