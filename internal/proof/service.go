@@ -4,7 +4,10 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"errors"
+	"log"
+	"net/url"
 	"sync"
+	"time"
 
 	"github.com/kroma-network/kroma-prover-proxy/internal/ec2"
 )
@@ -30,22 +33,26 @@ func (s *Service) Prove(traceString string, proofType Type) (*ProveResponse, err
 		return newProofResponseFromFileProof(proof)
 	}
 	s.mu.Lock()
+	defer s.mu.Unlock()
 	wg := s.inProgressProof[id]
 	if wg == nil {
-		wg = &sync.WaitGroup{}
-		wg.Add(1)
-		s.inProgressProof[id] = wg
-		go func() {
-			defer wg.Done()
-			withClient(s, func(c ProverClient) (*ProveResponse, error) {
+		var err error
+		wg, err = withClient(s, func(c ProverClient) (*sync.WaitGroup, error) {
+			wg := &sync.WaitGroup{}
+			wg.Add(1)
+			s.inProgressProof[id] = wg
+			go func() {
+				defer wg.Done()
+				defer delete(s.inProgressProof, id)
 				res, err := c.Prove(traceString, proofType)
 				s.disk.Save(id, &FileProof{FinalPair: res.FinalPair, Proof: res.Proof, Error: err})
-				delete(s.inProgressProof, id)
-				return res, err
-			})
-		}()
+			}()
+			return wg, nil
+		})
+		if err != nil {
+			return nil, err
+		}
 	}
-	s.mu.Unlock()
 	wg.Wait()
 	return newProofResponseFromFileProof(s.disk.Find(id))
 }
@@ -70,6 +77,20 @@ func withClient[R interface{}](s *Service, callback func(c ProverClient) (*R, er
 	client, err := NewProverClient(s.ec2.IpAddress())
 	if err != nil {
 		return nil, err
+	}
+	for { // Wait for the prover server to run.
+		_, err := client.Spec()
+		if err == nil {
+			break
+		}
+		var urlError *url.Error
+		if errors.As(err, &urlError) {
+			log.Println("instance started. but server not ready. waiting...")
+			time.Sleep(1 * time.Second)
+		} else {
+			// unexpected  error
+			return nil, err
+		}
 	}
 	return callback(client)
 }

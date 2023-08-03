@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -99,6 +100,16 @@ func (c *Controller) StartIfNotRunning() error {
 	if c.running {
 		return nil
 	}
+	for {
+		instance, err := c.findInstance()
+		if err != nil {
+			return fmt.Errorf("failed to read ec2 instance info %s: %w", c.instanceId, err)
+		}
+		if *instance.State.Name == ec2.InstanceStateNameStopped {
+			break
+		}
+		time.Sleep(1 * time.Second)
+	}
 	_, err := c.client.StartInstances(&ec2.StartInstancesInput{InstanceIds: c.instanceIds()})
 	if err != nil {
 		log.Println(fmt.Errorf("failed to start ec2 instance %s: %w", c.instanceId, err))
@@ -109,9 +120,9 @@ func (c *Controller) StartIfNotRunning() error {
 }
 
 func (c *Controller) StopIfRunning() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	if c.running {
-		c.mu.Lock()
-		defer c.mu.Unlock()
 		_, err := c.client.StopInstances(&ec2.StopInstancesInput{InstanceIds: c.instanceIds()})
 		if err == nil {
 			c.running = false
