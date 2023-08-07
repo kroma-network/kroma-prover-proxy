@@ -18,7 +18,7 @@ jobs:
       - name: Prepare
         id: prepare
         run: |
-          echo "docker-tag=dev-$(echo $GITHUB_SHA | cut -c1-7)" >> $GITHUB_OUTPUT
+          echo "docker-tag=prod-$(echo $GITHUB_SHA | cut -c1-7)" >> $GITHUB_OUTPUT
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
