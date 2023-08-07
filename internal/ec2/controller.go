@@ -59,6 +59,7 @@ func (c *Controller) updateState(instanceAddressType string, urlSchema string, p
 		if len(c.ipAddress) == 0 {
 			return errors.New("failed to retrieve instance address")
 		}
+		log.Printf("prover instance ip address %s\n", c.ipAddress)
 	}
 	return err
 }
