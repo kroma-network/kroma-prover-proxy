@@ -1,11 +1,13 @@
 name: ci/cd to Prod(sepolia)
 on:
   push:
-    branches: [ "main" ]
+    branches: 
+      - main
+    tags:
+      - '*.*.*'
 
 jobs:
   ci:
-    environment: prod
     outputs:
       docker-tag: ${{ steps.prepare.outputs.docker-tag }}
       target-cluster: ${{ steps.prepare.outputs.target-cluster }}
@@ -18,18 +20,18 @@ jobs:
       - name: Prepare
         id: prepare
         run: |
-          echo "docker-tag=prod-$(echo $GITHUB_SHA | cut -c1-7)" >> $GITHUB_OUTPUT
+          if [[ $GITHUB_REF_TYPE == 'branch' ]];
+          then
+            echo "docker-tag=pre-$(echo $GITHUB_SHA | cut -c1-7)" >> $GITHUB_OUTPUT
+          else
+            echo "docker-tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          fi
 
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v2
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ap-northeast-2
-
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v1
+          username: ${{ secrets.DOCKERHUB_ACCESS_TOKEN_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_ACCESS_TOKEN_SECRET }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
@@ -42,7 +44,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           push: true
-          tags: 997684852723.dkr.ecr.ap-northeast-2.amazonaws.com/prover-proxy:${{ steps.prepare.outputs.docker-tag }},997684852723.dkr.ecr.ap-northeast-2.amazonaws.com/prover-proxy:latest
+          tags: kromanetwork/prover-proxy:${{ steps.prepare.outputs.docker-tag }},kromanetwork/prover-proxy:latest
           platforms: linux/amd64,linux/arm64
 
   cd:
