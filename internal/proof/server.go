@@ -42,7 +42,11 @@ func (s *Server) ServeHTTP(writer http.ResponseWriter, httpRequest *http.Request
 	}
 
 	if result, err := s.callMethod(method, params); err != nil {
-		response["error"] = err.Error()
+		rpcError := NewJsonRpcErrorFromErrorOrNil(err)
+		if rpcError == nil {
+			rpcError = NewJsonRpcErrorFromString(err.Error())
+		}
+		response["error"] = rpcError
 	} else {
 		response["result"] = result
 	}

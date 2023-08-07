@@ -45,7 +45,12 @@ func (s *Service) Prove(traceString string, proofType Type) (*ProveResponse, err
 				defer wg.Done()
 				defer delete(s.inProgressProof, id)
 				res, err := c.Prove(traceString, proofType)
-				s.disk.Save(id, &FileProof{FinalPair: res.FinalPair, Proof: res.Proof, Error: err})
+				proof := &FileProof{FinalPair: res.FinalPair, Proof: res.Proof}
+				if err != nil {
+					proof.Error = err.Error()
+					proof.RpcError = NewJsonRpcErrorFromErrorOrNil(err)
+				}
+				s.disk.Save(id, proof)
 			}()
 			return wg, nil
 		})
@@ -104,8 +109,11 @@ func newProofResponseFromFileProof(proof *FileProof) (*ProveResponse, error) {
 	if proof == nil {
 		return nil, errors.New("unexpected error")
 	}
-	if proof.Error != nil {
-		return nil, proof.Error
+	if len(proof.Error) != 0 {
+		if proof.RpcError != nil {
+			return nil, proof.RpcError
+		}
+		return nil, NewJsonRpcErrorFromString(proof.Error)
 	}
 	return &ProveResponse{
 		FinalPair: proof.FinalPair,
