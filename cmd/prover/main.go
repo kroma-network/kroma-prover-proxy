@@ -60,6 +60,8 @@ func newServer(ctx *cli.Context) *proof.Server {
 				ctx.String(AwsRegion.Name),
 				ctx.String(AwsProverInstanceId.Name),
 				ctx.String(AwsProverAddressType.Name),
+				ctx.String(AwsProverUrlSchema.Name),
+				ctx.Int(AwsProverJsonRpcPort.Name),
 			),
 		),
 	)

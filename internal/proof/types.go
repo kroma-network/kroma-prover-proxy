@@ -9,12 +9,12 @@ type (
 	}
 
 	ProverSpecResponse struct {
-		ProofTypeDesc string `json:"proof_type_desc,omitempty"`
-		Degree        uint32 `json:"degree,omitempty"`
-		AggDegree     uint32 `json:"agg_degree,omitempty"`
-		ChainId       uint32 `json:"chain_id,omitempty"`
-		MaxTxs        uint32 `json:"max_txs,omitempty"`
-		MaxCallData   uint32 `json:"max_call_data,omitempty"`
+		ProofTypeDesc map[string]int `json:"proof_type_desc,omitempty"`
+		Degree        uint32         `json:"degree,omitempty"`
+		AggDegree     uint32         `json:"agg_degree,omitempty"`
+		ChainId       uint32         `json:"chain_id,omitempty"`
+		MaxTxs        uint32         `json:"max_txs,omitempty"`
+		MaxCallData   uint32         `json:"max_call_data,omitempty"`
 	}
 )
 
