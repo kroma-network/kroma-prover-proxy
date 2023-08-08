@@ -33,7 +33,6 @@ func (s *Service) Prove(traceString string, proofType Type) (*ProveResponse, err
 		return newProofResponseFromFileProof(proof)
 	}
 	s.mu.Lock()
-	defer s.mu.Unlock()
 	wg := s.inProgressProof[id]
 	if wg == nil {
 		var err error
@@ -44,8 +43,14 @@ func (s *Service) Prove(traceString string, proofType Type) (*ProveResponse, err
 			go func() {
 				defer wg.Done()
 				defer delete(s.inProgressProof, id)
+				log.Printf("prove start %s\n", id)
 				res, err := c.Prove(traceString, proofType)
-				proof := &FileProof{FinalPair: res.FinalPair, Proof: res.Proof}
+				log.Printf("prove complete %s\n", id)
+				proof := &FileProof{}
+				if res != nil {
+					proof.FinalPair = res.FinalPair
+					proof.Proof = res.Proof
+				}
 				if err != nil {
 					proof.Error = err.Error()
 					proof.RpcError = NewJsonRpcErrorFromErrorOrNil(err)
@@ -55,9 +60,11 @@ func (s *Service) Prove(traceString string, proofType Type) (*ProveResponse, err
 			return wg, nil
 		})
 		if err != nil {
+			s.mu.Unlock()
 			return nil, err
 		}
 	}
+	s.mu.Unlock()
 	wg.Wait()
 	return newProofResponseFromFileProof(s.disk.Find(id))
 }
