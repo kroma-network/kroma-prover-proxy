@@ -78,7 +78,8 @@ func send[T any](address string, method string, params any) (*T, error) {
 	}
 	var response response[T]
 	if err = json.Unmarshal(jsonBytes, &response); err != nil {
-		return nil, err
+		log.Printf("failed to json.Unmarshal. err %s, original bytes %s\n", err, jsonBytes)
+		return nil, errors.New("failed to json.Unmarshal")
 	}
 	if response.Error != nil {
 		return nil, response.Error
