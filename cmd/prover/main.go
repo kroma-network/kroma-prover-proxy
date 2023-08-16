@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"strconv"
 	"syscall"
+	"time"
 
 	"github.com/kroma-network/kroma-prover-proxy/internal/ec2"
 	"github.com/kroma-network/kroma-prover-proxy/internal/proof"
@@ -27,13 +28,15 @@ func main() {
 }
 
 func proverProxy(ctx *cli.Context) {
-	lis, err := net.Listen("tcp", net.JoinHostPort(ctx.String(JsonRpcAddr.Name), strconv.Itoa(ctx.Int(JsonRpcPort.Name))))
-	if err != nil {
-		log.Panicln(fmt.Errorf("failed to listen: %w", err))
-	}
 	proverServer := newServer(ctx)
+	srv := http.Server{
+		Addr:         net.JoinHostPort(ctx.String(JsonRpcAddr.Name), strconv.Itoa(ctx.Int(JsonRpcPort.Name))),
+		ReadTimeout:  6 * time.Hour,
+		WriteTimeout: 6 * time.Hour,
+		Handler:      proverServer,
+	}
 	go func() {
-		if err := http.Serve(lis, proverServer); err != nil {
+		if err := srv.ListenAndServe(); err != nil {
 			log.Panicln(fmt.Errorf("failed to serve: %w", err))
 		}
 	}()
@@ -47,7 +50,7 @@ func proverProxy(ctx *cli.Context) {
 	}...)
 	<-interruptChannel
 	proverServer.Close()
-	if err := lis.Close(); err != nil {
+	if err := srv.Close(); err != nil {
 		log.Println(fmt.Errorf("failed to close tcp %w", err).Error())
 	}
 }
