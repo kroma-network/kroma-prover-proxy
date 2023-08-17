@@ -3,6 +3,7 @@ package proof
 import (
 	"crypto/md5"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"log"
 	"net/url"
@@ -28,7 +29,7 @@ func NewService(disk *DiskRepository, ec2 *ec2.Controller) *Service {
 }
 
 func (s *Service) Prove(traceString string, proofType Type) (*ProveResponse, error) {
-	id := computeId(traceString)
+	id, blockNumber := computeId(traceString), readBlockNumber(traceString)
 	if proof := s.disk.Find(id); proof != nil {
 		return newProofResponseFromFileProof(proof)
 	}
@@ -40,12 +41,12 @@ func (s *Service) Prove(traceString string, proofType Type) (*ProveResponse, err
 			wg := &sync.WaitGroup{}
 			wg.Add(1)
 			s.inProgressProof[id] = wg
-			go func() {
+			go func(id, blockNumber string) {
 				defer wg.Done()
 				defer delete(s.inProgressProof, id)
-				log.Printf("prove start %s\n", id)
+				log.Println("prove start.", "blockNumber:", blockNumber, "id:", id)
 				res, err := c.Prove(traceString, proofType)
-				log.Printf("prove complete %s\n", id)
+				log.Println("prove complete.", "blockNumber:", blockNumber, "id:", id)
 				proof := &FileProof{}
 				if res != nil {
 					proof.FinalPair = res.FinalPair
@@ -56,7 +57,7 @@ func (s *Service) Prove(traceString string, proofType Type) (*ProveResponse, err
 					proof.RpcError = NewJsonRpcErrorFromErrorOrNil(err)
 				}
 				s.disk.Save(id, proof)
-			}()
+			}(id, blockNumber)
 			return wg, nil
 		})
 		if err != nil {
@@ -65,6 +66,7 @@ func (s *Service) Prove(traceString string, proofType Type) (*ProveResponse, err
 		}
 	}
 	s.mu.Unlock()
+	log.Println("waiting proof generation.", "blockNumber:", blockNumber, "id:", id)
 	wg.Wait()
 	return newProofResponseFromFileProof(s.disk.Find(id))
 }
@@ -110,6 +112,26 @@ func withClient[R interface{}](s *Service, callback func(c ProverClient) (*R, er
 func computeId(traceString string) string {
 	hash := md5.Sum([]byte(traceString))
 	return hex.EncodeToString(hash[:])
+}
+
+func readBlockNumber(traceString string) string {
+	result := make(map[string]interface{})
+	if err := json.Unmarshal([]byte(traceString), &result); err != nil {
+		log.Println("readBlockNumber: failed to json.Unmarshal", err)
+	}
+	if header, ok := result["header"]; ok {
+		if header, ok := header.(map[string]interface{}); ok {
+			if number, ok := header["number"].(string); ok {
+				return number
+			}
+			log.Println("readBlockNumber: blockNUmber does not string")
+			return ""
+		}
+		log.Println("readBlockNumber: header field does not object")
+		return ""
+	}
+	log.Println("readBlockNumber: header does not exist")
+	return ""
 }
 
 func newProofResponseFromFileProof(proof *FileProof) (*ProveResponse, error) {
