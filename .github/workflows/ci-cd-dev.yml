@@ -103,6 +103,6 @@ jobs:
     steps:
       - name: Change latest Image Tag
         run: |
-          cd devops-prover-up
+          cd /home/ubuntu/devops-prover-up
           docker compose pull
           docker compose --profile prover-proxy up -d
