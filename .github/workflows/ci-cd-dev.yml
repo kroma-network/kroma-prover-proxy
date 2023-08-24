@@ -76,33 +76,3 @@ jobs:
             git commit -am "https://github.com/${{ github.repository }}/commit/${GITHUB_SHA}" && git push
           fi
         shell: bash
-
-  cd-proxy-l2:
-    needs: ci
-    runs-on: [self-hosted, ip-10-0-0-77] # proxy-l2
-    steps:
-      - name: Change latest Image Tag
-        run: |
-          cd /home/ubuntu/devops-prover-up
-          docker compose pull
-          docker compose --profile prover-proxy up -d
-
-  cd-proxy-qa-1:
-    needs: ci
-    runs-on: [self-hosted, ip-10-0-0-16] # proxy-qa-1
-    steps:
-      - name: Change latest Image Tag
-        run: |
-          cd /home/ubuntu/devops-prover-up
-          docker compose pull
-          docker compose --profile prover-proxy up -d
-
-  cd-proxy-qa-2:
-    needs: ci
-    runs-on: [self-hosted, ip-10-0-0-183] # proxy-qa-2
-    steps:
-      - name: Change latest Image Tag
-        run: |
-          cd /home/ubuntu/devops-prover-up
-          docker compose pull
-          docker compose --profile prover-proxy up -d
