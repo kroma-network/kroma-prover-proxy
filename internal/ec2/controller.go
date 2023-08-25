@@ -134,3 +134,4 @@ func (c *Controller) StopIfRunning() {
 }
 
 func (c *Controller) instanceIds() []*string { return []*string{&c.instanceId} }
+func (c *Controller) Running() bool          { return c.running }
