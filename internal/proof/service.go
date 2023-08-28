@@ -46,7 +46,7 @@ func (s *Service) Prove(traceString string, proofType Type) (*ProveResponse, err
 				defer delete(s.inProgressProof, id)
 				log.Println("prove start.", "blockNumber:", blockNumber, "id:", id)
 				res, err := c.Prove(traceString, proofType)
-				log.Println("prove complete.", "blockNumber:", blockNumber, "id:", id)
+				log.Println("prove complete.", "blockNumber:", blockNumber, "id:", id, "err:", err)
 				proof := &FileProof{}
 				if res != nil {
 					proof.FinalPair = res.FinalPair
