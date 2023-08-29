@@ -43,10 +43,17 @@ func (s *Service) Prove(traceString string, proofType Type) (*ProveResponse, err
 			s.inProgressProof[id] = wg
 			go func(id, blockNumber string) {
 				defer wg.Done()
-				defer delete(s.inProgressProof, id)
+				defer func() {
+					s.mu.Lock()
+					delete(s.inProgressProof, id)
+					s.mu.Unlock()
+					if len(s.inProgressProof) == 0 {
+						s.ec2.StopIfRunning()
+					}
+				}()
 				log.Println("prove start.", "blockNumber:", blockNumber, "id:", id)
 				res, err := c.Prove(traceString, proofType)
-				log.Println("prove complete.", "blockNumber:", blockNumber, "id:", id)
+				log.Println("prove complete.", "blockNumber:", blockNumber, "id:", id, "err:", err)
 				proof := &FileProof{}
 				if res != nil {
 					proof.FinalPair = res.FinalPair

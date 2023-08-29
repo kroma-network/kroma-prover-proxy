@@ -17,6 +17,23 @@ func NewServer(service *Service) *Server {
 }
 
 func (s *Server) ServeHTTP(writer http.ResponseWriter, httpRequest *http.Request) {
+	switch httpRequest.RequestURI {
+	case "/":
+		s.serveJsonRpc(writer, httpRequest)
+	case "/health":
+		response := map[string]interface{}{
+			"status":               "ok",
+			"ec2Running":           s.service.ec2.Running(),
+			"generatingProofCount": len(s.service.inProgressProof),
+		}
+		err := json.NewEncoder(writer).Encode(response)
+		if err != nil {
+			http.Error(writer, "Failed to encode JSON response", http.StatusInternalServerError)
+		}
+	}
+}
+
+func (s *Server) serveJsonRpc(writer http.ResponseWriter, httpRequest *http.Request) {
 	var request map[string]interface{}
 	err := json.NewDecoder(httpRequest.Body).Decode(&request)
 	if err != nil {
