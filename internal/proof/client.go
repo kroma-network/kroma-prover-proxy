@@ -55,10 +55,12 @@ func NewJsonRpcErrorFromErrorOrNil(err error) (rpcError *JsonRpcError) {
 func (j *JsonRpcError) Error() string { return fmt.Sprintf("[%d] %s", j.Code, j.Message) }
 
 func (d dialJsonRpcProverClient) Prove(traceString string, proofType Type) (*ProveResponse, error) {
+	log.Println("send request to generate proof to prover")
 	return send[ProveResponse](d.address, "prove", []any{traceString, proofType})
 }
 
 func (d dialJsonRpcProverClient) Spec() (*ProverSpecResponse, error) {
+	log.Println("send request of spec")
 	return send[ProverSpecResponse](d.address, "spec", nil)
 }
 

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 )
@@ -77,6 +78,7 @@ func (s *Server) serveJsonRpc(writer http.ResponseWriter, httpRequest *http.Requ
 func (s *Server) callMethod(method string, params interface{}) (any, error) {
 	switch method {
 	case "prove":
+		log.Println("prove requested")
 		p := params.([]any)
 		traceString, traceStringOk := p[0].(string)
 		if !traceStringOk {
@@ -88,6 +90,7 @@ func (s *Server) callMethod(method string, params interface{}) (any, error) {
 		}
 		return s.service.Prove(traceString, Type(proofType))
 	case "spec":
+		log.Println("spec requested")
 		return s.service.Spec()
 	default:
 		return nil, fmt.Errorf("unsupported method %s", method)
