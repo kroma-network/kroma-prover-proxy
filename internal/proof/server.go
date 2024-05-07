@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"strconv"
 )
 
 type Server struct {
@@ -84,11 +83,7 @@ func (s *Server) callMethod(method string, params interface{}) (any, error) {
 		if !traceStringOk {
 			return nil, errors.New("failed to read traceString parameter")
 		}
-		proofType, proofTypeError := strconv.Atoi(fmt.Sprintf("%v", p[1]))
-		if proofTypeError != nil {
-			return nil, proofTypeError
-		}
-		return s.service.Prove(traceString, Type(proofType))
+		return s.service.Prove(traceString)
 	case "spec":
 		log.Println("spec requested")
 		return s.service.Spec()

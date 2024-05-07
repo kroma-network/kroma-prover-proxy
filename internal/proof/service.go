@@ -28,7 +28,7 @@ func NewService(disk *DiskRepository, ec2 *ec2.Controller) *Service {
 	}
 }
 
-func (s *Service) Prove(traceString string, proofType Type) (*ProveResponse, error) {
+func (s *Service) Prove(traceString string) (*ProveResponse, error) {
 	id, blockNumber := computeId(traceString), readBlockNumber(traceString)
 	log.Printf("request prove for block number %s to prover", blockNumber)
 	if proof := s.disk.Find(id); proof != nil {
@@ -53,7 +53,7 @@ func (s *Service) Prove(traceString string, proofType Type) (*ProveResponse, err
 					}
 				}()
 				log.Println("prove start.", "blockNumber:", blockNumber, "id:", id)
-				res, err := c.Prove(traceString, proofType)
+				res, err := c.Prove(traceString)
 				log.Println("prove complete.", "blockNumber:", blockNumber, "id:", id, "err:", err)
 				proof := &FileProof{}
 				if res != nil {
