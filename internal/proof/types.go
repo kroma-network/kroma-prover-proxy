@@ -1,8 +1,6 @@
 package proof
 
 type (
-	Type int32
-
 	ProveResponse struct {
 		FinalPair []byte `json:"final_pair,omitempty"`
 		Proof     []byte `json:"proof,omitempty"`
@@ -15,12 +13,4 @@ type (
 		MaxTxs      uint32 `json:"max_txs,omitempty"`
 		MaxCallData uint32 `json:"max_call_data,omitempty"`
 	}
-)
-
-const (
-	ProofType_NONE  Type = 0
-	ProofType_EVM   Type = 1
-	ProofType_STATE Type = 2
-	ProofType_SUPER Type = 3
-	ProofType_AGG   Type = 4
 )
