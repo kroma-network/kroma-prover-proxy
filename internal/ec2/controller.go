@@ -99,6 +99,7 @@ func (c *Controller) StartIfNotRunning() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.running {
+		log.Println("instance is already running")
 		return nil
 	}
 	for {
@@ -112,6 +113,7 @@ func (c *Controller) StartIfNotRunning() error {
 		time.Sleep(1 * time.Second)
 	}
 	_, err := c.client.StartInstances(&ec2.StartInstancesInput{InstanceIds: c.instanceIds()})
+	log.Printf("start instance (id: %s)", c.instanceId)
 	if err != nil {
 		log.Println(fmt.Errorf("failed to start ec2 instance %s: %w", c.instanceId, err))
 		return err
@@ -124,6 +126,7 @@ func (c *Controller) StopIfRunning() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.running {
+		log.Printf("stop instance (id: %s)", c.instanceId)
 		_, err := c.client.StopInstances(&ec2.StopInstancesInput{InstanceIds: c.instanceIds()})
 		if err == nil {
 			c.running = false

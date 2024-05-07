@@ -30,6 +30,7 @@ func NewService(disk *DiskRepository, ec2 *ec2.Controller) *Service {
 
 func (s *Service) Prove(traceString string) (*ProveResponse, error) {
 	id, blockNumber := computeId(traceString), readBlockNumber(traceString)
+	log.Printf("request prove for block number %s to prover", blockNumber)
 	if proof := s.disk.Find(id); proof != nil {
 		return newProofResponseFromFileProof(proof)
 	}
@@ -79,6 +80,7 @@ func (s *Service) Prove(traceString string) (*ProveResponse, error) {
 }
 
 func (s *Service) Spec() (*ProverSpecResponse, error) {
+	log.Println("request spec to prover")
 	return withClient(s, func(c ProverClient) (*ProverSpecResponse, error) { return c.Spec() })
 }
 
@@ -89,6 +91,7 @@ func (s *Service) Close() {
 func withClient[R interface{}](s *Service, callback func(c ProverClient) (*R, error)) (*R, error) {
 	defer func() {
 		if len(s.inProgressProof) == 0 {
+			log.Println("there is no proof in progress. shut down if it is running.")
 			s.ec2.StopIfRunning()
 		}
 	}()
