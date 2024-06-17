@@ -109,7 +109,7 @@ func withClient[R interface{}](s *Service, callback func(c ProverClient) (*R, er
 		}
 		var urlError *url.Error
 		if errors.As(err, &urlError) {
-			log.Println("instance started. but server not ready. waiting...")
+			log.Println("instance started. but server not ready. waiting...", "err", err)
 			time.Sleep(1 * time.Second)
 		} else {
 			// unexpected  error
