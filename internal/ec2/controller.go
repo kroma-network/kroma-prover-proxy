@@ -57,7 +57,7 @@ func (c *Controller) updateState(instanceAddressType string, urlSchema string, p
 		c.running = aws.StringValue(instance.State.Name) == "running" || aws.StringValue(instance.State.Name) == "pending"
 		c.ipAddress = findAddress(instance, instanceAddressType, urlSchema, port)
 		if len(c.ipAddress) == 0 {
-			return errors.New("failed to retrieve instance address")
+			return errors.New("failed to retrieve prover instance address")
 		}
 		log.Printf("prover instance ip address %s\n", c.ipAddress)
 	}
@@ -99,13 +99,13 @@ func (c *Controller) StartIfNotRunning() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.running {
-		log.Println("instance is already running")
+		log.Println("prover instance is already running")
 		return nil
 	}
 	for {
 		instance, err := c.findInstance()
 		if err != nil {
-			return fmt.Errorf("failed to read ec2 instance info %s: %w", c.instanceId, err)
+			return fmt.Errorf("failed to read prover instance info (id %s): %w", c.instanceId, err)
 		}
 		if *instance.State.Name == ec2.InstanceStateNameStopped {
 			break
@@ -113,11 +113,11 @@ func (c *Controller) StartIfNotRunning() error {
 		time.Sleep(1 * time.Second)
 	}
 	_, err := c.client.StartInstances(&ec2.StartInstancesInput{InstanceIds: c.instanceIds()})
-	log.Printf("start instance (id: %s)", c.instanceId)
 	if err != nil {
-		log.Println(fmt.Errorf("failed to start ec2 instance %s: %w", c.instanceId, err))
+		log.Println(fmt.Errorf("failed to start prover instance (id %s): %w", c.instanceId, err))
 		return err
 	}
+	log.Printf("started prover instance (id %s)", c.instanceId)
 	c.running = true
 	return nil
 }
@@ -125,15 +125,17 @@ func (c *Controller) StartIfNotRunning() error {
 func (c *Controller) StopIfRunning() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if c.running {
-		log.Printf("stop instance (id: %s)", c.instanceId)
-		_, err := c.client.StopInstances(&ec2.StopInstancesInput{InstanceIds: c.instanceIds()})
-		if err == nil {
-			c.running = false
-		} else {
-			log.Println(fmt.Errorf("failed to stop ec2 instance %s: %w", c.instanceId, err))
-		}
+	if !c.running {
+		log.Println("prover instance is not running")
+		return
 	}
+	_, err := c.client.StopInstances(&ec2.StopInstancesInput{InstanceIds: c.instanceIds()})
+	if err != nil {
+		log.Println(fmt.Errorf("failed to stop prover instance (id %s): %w", c.instanceId, err))
+		return
+	}
+	log.Printf("stopped prover instance (id %s)", c.instanceId)
+	c.running = false
 }
 
 func (c *Controller) instanceIds() []*string { return []*string{&c.instanceId} }

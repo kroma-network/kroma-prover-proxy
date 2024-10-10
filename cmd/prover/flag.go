@@ -7,13 +7,13 @@ import (
 var (
 	JsonRpcAddr = cli.StringFlag{
 		Name:   "jsonrpc.addr",
-		Usage:  "Json Rpc server listening address",
+		Usage:  "Prover proxy JSON RPC listening address",
 		Value:  "localhost",
 		EnvVar: "JSONRPC_ADDR",
 	}
 	JsonRpcPort = cli.IntFlag{
 		Name:   "jsonrpc.port",
-		Usage:  "Json Rpc server listening port",
+		Usage:  "Prover proxy JSON RPC listening port",
 		Value:  6000,
 		EnvVar: "JSONRPC_PORT",
 	}
@@ -25,30 +25,31 @@ var (
 	}
 	AwsRegion = cli.StringFlag{
 		Name:   "aws.region",
+		Usage:  "AWS region to launch prover EC2 instance",
 		Value:  "ap-northeast-2",
 		EnvVar: "AWS_REGION",
 	}
 	AwsProverInstanceId = cli.StringFlag{
 		Name:     "aws.prover-instance-id",
-		Usage:    "EC instance ID to generate the proof",
+		Usage:    "Prover EC2 instance ID to generate the proof",
 		EnvVar:   "AWS_PROVER_INSTANCE_ID",
 		Required: true,
 	}
 	AwsProverAddressType = cli.StringFlag{
 		Name:   "aws.prover-address-type",
-		Usage:  "EC instance address type (private, public)",
+		Usage:  "Prover EC2 instance address type (private, public)",
 		Value:  "private",
 		EnvVar: "AWS_PROVER_ADDRESS_TYPE",
 	}
 	AwsProverUrlSchema = cli.StringFlag{
 		Name:   "aws.prover-url-schema",
-		Usage:  "http, https",
+		Usage:  "Prover EC2 instance URL schema (http, https)",
 		Value:  "http",
 		EnvVar: "AWS_PROVER_URL_SCHEMA",
 	}
 	AwsProverJsonRpcPort = cli.IntFlag{
 		Name:   "aws.prover-jsonrpc-port",
-		Usage:  "jsonrpc port",
+		Usage:  "Prover EC2 instance JSON RPC port",
 		Value:  3030,
 		EnvVar: "AWS_PROVER_JSONRPC_PORT",
 	}

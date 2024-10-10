@@ -11,19 +11,20 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/urfave/cli"
+
 	"github.com/kroma-network/kroma-prover-proxy/internal/ec2"
 	"github.com/kroma-network/kroma-prover-proxy/internal/proof"
-	"github.com/urfave/cli"
 )
 
 func main() {
 	app := cli.NewApp()
-	app.Name = "kroma-proof-proxy"
-	app.Version = "0.0.1"
+	app.Name = "kroma-prover-proxy"
+	app.Version = "0.2.0"
 	app.Flags = AllFlags()
 	app.Action = proverProxy
 	if err := app.Run(os.Args); err != nil {
-		log.Panicln(fmt.Errorf("failed to start kroma proof proxy: %w", err))
+		log.Panicln(fmt.Errorf("failed to start kroma prover proxy: %w", err))
 	}
 }
 

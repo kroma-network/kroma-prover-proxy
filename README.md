@@ -1,3 +1,1 @@
 # Kroma Prover Proxy
-
-Release
