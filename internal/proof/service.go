@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"net/url"
 	"sync"
@@ -28,33 +29,39 @@ func NewService(disk *DiskRepository, ec2 *ec2.Controller) *Service {
 	}
 }
 
-func (s *Service) Prove(traceString string) (*ProveResponse, error) {
-	id, blockNumber := computeId(traceString), readBlockNumber(traceString)
-	log.Printf("request prove for block number %s to prover", blockNumber)
-	if proof := s.disk.Find(id); proof != nil {
+func (s *Service) Prove(traceString string) (*ZKEVMProofResponse, error) {
+	proofId, blockNumber := computeProofId(traceString), readBlockNumber(traceString)
+	if proof := s.disk.Find(proofId); proof != nil {
+		log.Printf("proof for block number %s already generated, load from disk", blockNumber)
 		return newProofResponseFromFileProof(proof)
 	}
+
 	s.mu.Lock()
-	wg := s.inProgressProof[id]
+	wg := s.inProgressProof[proofId]
 	if wg == nil {
 		var err error
 		wg, err = withClient(s, func(c ProverClient) (*sync.WaitGroup, error) {
 			wg := &sync.WaitGroup{}
 			wg.Add(1)
-			s.inProgressProof[id] = wg
-			go func(id, blockNumber string) {
+			s.inProgressProof[proofId] = wg
+			go func(proofId, blockNumber string) {
 				defer wg.Done()
 				defer func() {
 					s.mu.Lock()
-					delete(s.inProgressProof, id)
+					delete(s.inProgressProof, proofId)
 					s.mu.Unlock()
 					if len(s.inProgressProof) == 0 {
+						log.Println("there is no proof in progress, shut down prover instance if running")
 						s.ec2.StopIfRunning()
 					}
 				}()
-				log.Println("prove start.", "blockNumber:", blockNumber, "id:", id)
+				log.Printf("send request for proof generation to prover (blockNumber: %s, proofId: %s)", blockNumber, proofId)
 				res, err := c.Prove(traceString)
-				log.Println("prove complete.", "blockNumber:", blockNumber, "id:", id, "err:", err)
+				if err != nil {
+					log.Println(fmt.Errorf("error occured while proof generation (blockNumber: %s, proofId: %s): %w", blockNumber, proofId, err))
+				} else {
+					log.Printf("proof generation completed (blockNumber: %s, proofId: %s)", blockNumber, proofId)
+				}
 				proof := &FileProof{}
 				if res != nil {
 					proof.FinalPair = res.FinalPair
@@ -64,8 +71,8 @@ func (s *Service) Prove(traceString string) (*ProveResponse, error) {
 					proof.Error = err.Error()
 					proof.RpcError = NewJsonRpcErrorFromErrorOrNil(err)
 				}
-				s.disk.Save(id, proof)
-			}(id, blockNumber)
+				s.disk.Save(proofId, proof)
+			}(proofId, blockNumber)
 			return wg, nil
 		})
 		if err != nil {
@@ -74,13 +81,13 @@ func (s *Service) Prove(traceString string) (*ProveResponse, error) {
 		}
 	}
 	s.mu.Unlock()
-	log.Println("waiting proof generation.", "blockNumber:", blockNumber, "id:", id)
+	log.Printf("waiting for proof generation (blockNumber: %s, proofId: %s)", blockNumber, proofId)
 	wg.Wait()
-	return newProofResponseFromFileProof(s.disk.Find(id))
+	return newProofResponseFromFileProof(s.disk.Find(proofId))
 }
 
 func (s *Service) Spec() (*ProverSpecResponse, error) {
-	log.Println("request spec to prover")
+	log.Println("send request of prover spec")
 	return withClient(s, func(c ProverClient) (*ProverSpecResponse, error) { return c.Spec() })
 }
 
@@ -91,17 +98,14 @@ func (s *Service) Close() {
 func withClient[R interface{}](s *Service, callback func(c ProverClient) (*R, error)) (*R, error) {
 	defer func() {
 		if len(s.inProgressProof) == 0 {
-			log.Println("there is no proof in progress. shut down if it is running.")
+			log.Println("there is no proof in progress, shut down prover instance if running")
 			s.ec2.StopIfRunning()
 		}
 	}()
 	if err := s.ec2.StartIfNotRunning(); err != nil {
 		return nil, err
 	}
-	client, err := NewProverClient(s.ec2.IpAddress())
-	if err != nil {
-		return nil, err
-	}
+	client := NewProverClient(s.ec2.IpAddress())
 	for { // Wait for the prover server to run.
 		_, err := client.Spec()
 		if err == nil {
@@ -112,14 +116,14 @@ func withClient[R interface{}](s *Service, callback func(c ProverClient) (*R, er
 			log.Println("instance started. but server not ready. waiting...", "err", err)
 			time.Sleep(1 * time.Second)
 		} else {
-			// unexpected  error
+			// unexpected error
 			return nil, err
 		}
 	}
 	return callback(client)
 }
 
-func computeId(traceString string) string {
+func computeProofId(traceString string) string {
 	hash := md5.Sum([]byte(traceString))
 	return hex.EncodeToString(hash[:])
 }
@@ -134,17 +138,17 @@ func readBlockNumber(traceString string) string {
 			if number, ok := header["number"].(string); ok {
 				return number
 			}
-			log.Println("readBlockNumber: blockNUmber does not string")
+			log.Println("readBlockNumber: blockNumber is not string")
 			return ""
 		}
-		log.Println("readBlockNumber: header field does not object")
+		log.Println("readBlockNumber: header field is not object")
 		return ""
 	}
 	log.Println("readBlockNumber: header does not exist")
 	return ""
 }
 
-func newProofResponseFromFileProof(proof *FileProof) (*ProveResponse, error) {
+func newProofResponseFromFileProof(proof *FileProof) (*ZKEVMProofResponse, error) {
 	if proof == nil {
 		return nil, errors.New("unexpected error")
 	}
@@ -154,7 +158,7 @@ func newProofResponseFromFileProof(proof *FileProof) (*ProveResponse, error) {
 		}
 		return nil, NewJsonRpcErrorFromString(proof.Error)
 	}
-	return &ProveResponse{
+	return &ZKEVMProofResponse{
 		FinalPair: proof.FinalPair,
 		Proof:     proof.Proof,
 	}, nil

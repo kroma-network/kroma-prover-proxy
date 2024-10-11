@@ -11,12 +11,15 @@ import (
 )
 
 type ProverClient interface {
-	Prove(traceString string) (*ProveResponse, error)
+	Prove(traceString string) (*ZKEVMProofResponse, error)
+	RegisterProve(blockHash string, preimages string) (*RequestStatusResponse, error)
+	GetRequestStatus(blockHash string) (*RequestStatusResponse, error)
+	GetProof(blockHash string) (*ZKVMProofResponse, error)
 	Spec() (*ProverSpecResponse, error)
 }
 
-func NewProverClient(address string) (ProverClient, error) {
-	return &dialJsonRpcProverClient{address}, nil
+func NewProverClient(address string) ProverClient {
+	return &dialJsonRpcProverClient{address}
 }
 
 type dialJsonRpcProverClient struct {
@@ -24,14 +27,14 @@ type dialJsonRpcProverClient struct {
 }
 
 type request struct {
-	Jsonrpc string `json:"jsonrpc"`
+	JsonRpc string `json:"jsonrpc"`
 	Method  string `json:"method"`
 	Params  any    `json:"params"`
 	Id      string `json:"id"`
 }
 
 type response[T any] struct {
-	Jsonrpc string        `json:"jsonrpc"`
+	JsonRpc string        `json:"jsonrpc"`
 	Result  *T            `json:"result"`
 	Error   *JsonRpcError `json:"error"`
 	Id      string        `json:"id"`
@@ -44,7 +47,7 @@ type JsonRpcError struct {
 }
 
 func NewJsonRpcErrorFromString(err string) *JsonRpcError {
-	return &JsonRpcError{Code: -32000, Message: err}
+	return &JsonRpcError{Code: -32603, Message: err}
 }
 
 func NewJsonRpcErrorFromErrorOrNil(err error) (rpcError *JsonRpcError) {
@@ -54,13 +57,23 @@ func NewJsonRpcErrorFromErrorOrNil(err error) (rpcError *JsonRpcError) {
 
 func (j *JsonRpcError) Error() string { return fmt.Sprintf("[%d] %s", j.Code, j.Message) }
 
-func (d dialJsonRpcProverClient) Prove(traceString string) (*ProveResponse, error) {
-	log.Println("send request to generate proof to prover")
-	return send[ProveResponse](d.address, "prove", []any{traceString})
+func (d dialJsonRpcProverClient) Prove(traceString string) (*ZKEVMProofResponse, error) {
+	return send[ZKEVMProofResponse](d.address, "prove", []any{traceString})
+}
+
+func (d dialJsonRpcProverClient) RegisterProve(blockHash string, preimages string) (*RequestStatusResponse, error) {
+	return nil, nil
+}
+
+func (d dialJsonRpcProverClient) GetRequestStatus(blockHash string) (*RequestStatusResponse, error) {
+	return nil, nil
+}
+
+func (d dialJsonRpcProverClient) GetProof(blockHash string) (*ZKVMProofResponse, error) {
+	return nil, nil
 }
 
 func (d dialJsonRpcProverClient) Spec() (*ProverSpecResponse, error) {
-	log.Println("send request of spec")
 	return send[ProverSpecResponse](d.address, "spec", nil)
 }
 

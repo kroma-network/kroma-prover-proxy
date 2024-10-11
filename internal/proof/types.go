@@ -1,9 +1,21 @@
 package proof
 
 type (
-	ProveResponse struct {
+	ZKEVMProofResponse struct {
 		FinalPair []byte `json:"final_pair,omitempty"`
 		Proof     []byte `json:"proof,omitempty"`
+	}
+
+	ZKVMProofResponse struct {
+		ParentOutputRoot string `json:"parent_output_root"`
+		OutputRoot       string `json:"output_root"`
+		L1HeadHash       string `json:"l1_head_hash"`
+		VKeyHash         string `json:"v_key_hash"`
+		Proof            string `json:"proof"`
+	}
+
+	RequestStatusResponse struct {
+		TaskStatusCode uint8 `json:"task_status_code"`
 	}
 
 	ProverSpecResponse struct {

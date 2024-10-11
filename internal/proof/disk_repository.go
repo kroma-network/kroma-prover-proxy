@@ -45,8 +45,8 @@ func NewDiskRepository(baseDir string) *DiskRepository {
 	return disk
 }
 
-func (r *DiskRepository) Find(id string) (proof *FileProof) {
-	file, err := os.ReadFile(r.baseDir + id)
+func (r *DiskRepository) Find(proofId string) (proof *FileProof) {
+	file, err := os.ReadFile(r.baseDir + proofId)
 	if err == nil {
 		err = json.Unmarshal(file, &proof)
 		if err != nil {
@@ -56,9 +56,9 @@ func (r *DiskRepository) Find(id string) (proof *FileProof) {
 	return
 }
 
-func (r *DiskRepository) Save(id string, proof *FileProof) {
+func (r *DiskRepository) Save(proofId string, proof *FileProof) {
 	jsonResult, _ := json.Marshal(proof)
-	err := os.WriteFile(r.baseDir+id, jsonResult, 0644)
+	err := os.WriteFile(r.baseDir+proofId, jsonResult, 0644)
 	if err != nil {
 		log.Printf("os.WriteFile failed. %v", err)
 
@@ -73,7 +73,9 @@ func (r *DiskRepository) scheduleDeleteOldProof(interval time.Duration) {
 		select {
 		case <-ticker.C:
 			deletedCount := r.deleteOldProof(time.Now().Add(-r.deleteBefore))
-			log.Printf("deleted old proof count %d\n", deletedCount)
+			if deletedCount > 0 {
+				log.Printf("deleted %d old proof\n", deletedCount)
+			}
 		case <-r.closeContext.Done():
 			return
 		}
